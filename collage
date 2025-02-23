@@ -1,0 +1,196 @@
+import os
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from tkinter import ttk  # Для Style
+
+class CollageApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Collage Generator")
+        master.geometry("600x500")  # Начальный размер окна
+        master.resizable(False, False)
+
+        self.image_folder_path = tk.StringVar()
+        self.allowed_extensions = tk.StringVar()
+        self.collage_title_text = tk.StringVar()
+        self.output_file_name = tk.StringVar()
+        self.selected_images = []
+        self.image_list = [] #Список доступных изображений
+
+        self.create_widgets()
+        self.apply_styles()
+
+    def apply_styles(self):
+        # Настройка стилей для кнопок и лэйблов (улучшение визуального оформления)
+        style = ttk.Style()
+        style.configure("TButton", padding=5, relief="raised", background="#f0f0f0", borderwidth=2)
+        style.configure("TLabel", padding=5, background="#ffffff") #стиль для лейбла
+
+    def create_widgets(self):
+        # Frame для полей ввода и меток
+        input_frame = ttk.Frame(self.master, padding=10)
+        input_frame.pack(fill=tk.X)  # Растягиваем по ширине
+
+        # Путь к папке с изображениями
+        ttk.Label(input_frame, text="Папка с изображениями:", style="TLabel").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.image_folder_entry = ttk.Entry(input_frame, textvariable=self.image_folder_path, width=40)
+        self.image_folder_entry.grid(row=0, column=1, sticky=(tk.W + tk.E), pady=5)
+        self.browse_button = ttk.Button(input_frame, text="Обзор", command=self.browse_folder)
+        self.browse_button.grid(row=0, column=2, sticky=tk.W, padx=5)
+
+        # Расширения
+        ttk.Label(input_frame, text="Расширения (jpg, png, ...):", style="TLabel").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.extensions_entry = ttk.Entry(input_frame, textvariable=self.allowed_extensions, width=40)
+        self.extensions_entry.grid(row=1, column=1, sticky=(tk.W + tk.E), pady=5)
+
+        # Заголовок коллажа
+        ttk.Label(input_frame, text="Заголовок коллажа:", style="TLabel").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.title_entry = ttk.Entry(input_frame, textvariable=self.collage_title_text, width=40)
+        self.title_entry.grid(row=2, column=1, sticky=(tk.W + tk.E), pady=5)
+
+        # Путь для сохранения
+        ttk.Label(input_frame, text="Путь сохранения коллажа:", style="TLabel").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.output_entry = ttk.Entry(input_frame, textvariable=self.output_file_name, width=40)
+        self.output_entry.grid(row=3, column=1, sticky=(tk.W + tk.E), pady=5)
+        self.save_browse_button = ttk.Button(input_frame, text="Обзор", command=self.browse_save_file)
+        self.save_browse_button.grid(row=3, column=2, sticky=tk.W, padx=5)
+
+        # Кнопка выбора изображений
+        self.select_images_button = ttk.Button(self.master, text="Выбрать изображения", command=self.select_images_dialog)
+        self.select_images_button.pack(pady=10)
+
+        # Кнопка создания коллажа
+        self.generate_button = ttk.Button(self.master, text="Создать коллаж", command=self.generate_collage_wrapper)
+        self.generate_button.pack(pady=10)
+
+        #Текстовое поле для вывода сообщений.
+        self.message_text = tk.Text(self.master, height=5, width=60, wrap=tk.WORD)
+        self.message_text.pack(pady=10)
+        self.message_text.config(state=tk.DISABLED) # Блокируем редактирование.
+
+    def browse_folder(self):
+        folder_path = filedialog.askdirectory()
+        if folder_path:
+            self.image_folder_path.set(folder_path)
+            self.update_message("Папка выбрана.")
+
+    def browse_save_file(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".jpg", filetypes=[("JPEG files", "*.jpg"), ("All files", "*.*")])
+        if file_path:
+            self.output_file_name.set(file_path)
+            self.update_message("Путь для сохранения выбран.")
+
+    def select_images_dialog(self):
+        image_folder = self.image_folder_path.get()
+        allowed_extensions_str = self.allowed_extensions.get()
+        if not image_folder or not allowed_extensions_str:
+            messagebox.showerror("Ошибка", "Пожалуйста, укажите папку с изображениями и расширения.")
+            return
+
+        allowed_extensions = tuple('.' + ext.strip().lower() for ext in allowed_extensions_str.split(','))
+
+        try:
+            self.image_list = [f for f in os.listdir(image_folder) if f.lower().endswith(allowed_extensions)]
+        except FileNotFoundError:
+            messagebox.showerror("Ошибка", "Указанная папка не найдена.")
+            return
+
+        if not self.image_list:
+            messagebox.showinfo("Информация", "В указанной папке нет изображений с выбранными расширениями.")
+            return
+
+        # Создаем диалоговое окно для выбора изображений
+        select_dialog = tk.Toplevel(self.master)
+        select_dialog.title("Выберите изображения")
+
+        # Список изображений
+        listbox = tk.Listbox(select_dialog, selectmode=tk.MULTIPLE, width=50, height=15)
+        for i, image_name in enumerate(self.image_list):
+            listbox.insert(tk.END, f"{i + 1}: {image_name}")
+        listbox.pack(padx=10, pady=10)
+
+        # Кнопка "ОК"
+        ok_button = ttk.Button(select_dialog, text="OK", command=lambda: self.confirm_selection(listbox, select_dialog))
+        ok_button.pack(pady=5)
+
+    def confirm_selection(self, listbox, select_dialog):
+        selected_indices = listbox.curselection()
+        self.selected_images = [self.image_list[i] for i in selected_indices]  # Обновляем selected_images
+        self.update_message(f"Выбрано {len(self.selected_images)} изображений.")  # Используем f-строки
+        select_dialog.destroy()  # Закрываем диалог
+
+    def generate_collage_wrapper(self):
+        image_folder = self.image_folder_path.get()
+        selected_images = self.selected_images  # Используем сохраненный список выбранных изображений
+        collage_title = self.collage_title_text.get()
+        output_file = self.output_file_name.get()
+
+        if not image_folder or not selected_images or not collage_title or not output_file:
+            messagebox.showerror("Ошибка", "Пожалуйста, заполните все поля и выберите изображения.")
+            return
+
+        self.generate_collage(image_folder, selected_images, collage_title, output_file)
+
+    def generate_collage(self, image_folder, selected_images, collage_title, output_file, img_size=(150, 150), border=5):
+        if not selected_images:
+            self.update_message("Ошибка: Не выбрано ни одного изображения для коллажа.")
+            return
+
+        try:
+            title_font = ImageFont.truetype("arial.ttf", 20) # Пробуем Arial
+        except IOError:
+            try:
+                title_font = ImageFont.truetype("arialbd.ttf", 20) # Пробуем Arial Bold (если есть)
+            except IOError:
+                title_font = ImageFont.load_default() # Если совсем ничего нет
+
+        n_images = len(selected_images)
+        grid_size = int(n_images ** 0.5) + 1
+        collage_width = grid_size * (img_size[0] + border) - border
+        collage_height = collage_width + 60  # 60 pixels for the title
+        collage = Image.new('RGB', (collage_width, collage_height), color=(220, 220, 220))
+
+        x_offset = 0
+        y_offset = 60
+
+        for i, image_name in enumerate(selected_images):
+            img_path = os.path.join(image_folder, image_name)
+            try:
+                img = Image.open(img_path)
+                img = ImageOps.fit(img, img_size, method=Image.LANCZOS)  # Используем LANCZOS для масштабирования
+                collage.paste((0, 0, 0), (x_offset, y_offset, x_offset + img_size[0] + border, y_offset + img_size[1] + border))
+                collage.paste(img, (x_offset + border // 2, y_offset + border // 2))
+            except FileNotFoundError:
+                self.update_message(f"Ошибка: Файл не найден: {image_name}")
+                return
+            except Exception as e:
+                self.update_message(f"Ошибка обработки изображения {image_name}: {e}") # Более общая обработка
+                return
+
+            x_offset += img_size[0] + border
+            if (i + 1) % grid_size == 0:
+                x_offset = 0
+                y_offset += img_size[1] + border
+
+        draw = ImageDraw.Draw(collage)
+        title_bbox = draw.textbbox((0, 0), collage_title, font=title_font)
+        title_width = title_bbox[2] - title_bbox[0]
+        title_height = title_bbox[3] - title_bbox[1]
+        draw.text(((collage_width - title_width) // 2, 30), collage_title, font=title_font, fill=(0, 0, 0))
+
+        try:
+            collage.save(output_file, 'JPEG')
+            self.update_message(f"Коллаж сохранен как '{output_file}'")
+        except Exception as e:
+            self.update_message(f"Ошибка сохранения файла: {e}")
+
+    def update_message(self, message):
+        self.message_text.config(state=tk.NORMAL)
+        self.message_text.delete("1.0", tk.END)
+        self.message_text.insert(tk.END, message)
+        self.message_text.config(state=tk.DISABLED)
+
+root = tk.Tk()
+app = CollageApp(root)
+root.mainloop()
