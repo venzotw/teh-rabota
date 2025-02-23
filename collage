@@ -2,13 +2,13 @@ import os
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from tkinter import ttk  # Для Style
+from tkinter import ttk  
 
 class CollageApp:
     def __init__(self, master):
         self.master = master
-        master.title("Collage Generator")
-        master.geometry("600x500")  # Начальный размер окна
+        master.title("Коллаж")
+        master.geometry("600x500")  
         master.resizable(False, False)
 
         self.image_folder_path = tk.StringVar()
@@ -16,51 +16,51 @@ class CollageApp:
         self.collage_title_text = tk.StringVar()
         self.output_file_name = tk.StringVar()
         self.selected_images = []
-        self.image_list = [] #Список доступных изображений
+        self.image_list = [] 
 
         self.create_widgets()
         self.apply_styles()
 
     def apply_styles(self):
-        # Настройка стилей для кнопок и лэйблов (улучшение визуального оформления)
+        
         style = ttk.Style()
         style.configure("TButton", padding=5, relief="raised", background="#f0f0f0", borderwidth=2)
         style.configure("TLabel", padding=5, background="#ffffff") #стиль для лейбла
 
     def create_widgets(self):
-        # Frame для полей ввода и меток
+       
         input_frame = ttk.Frame(self.master, padding=10)
         input_frame.pack(fill=tk.X)  # Растягиваем по ширине
 
-        # Путь к папке с изображениями
+       
         ttk.Label(input_frame, text="Папка с изображениями:", style="TLabel").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.image_folder_entry = ttk.Entry(input_frame, textvariable=self.image_folder_path, width=40)
         self.image_folder_entry.grid(row=0, column=1, sticky=(tk.W + tk.E), pady=5)
         self.browse_button = ttk.Button(input_frame, text="Обзор", command=self.browse_folder)
         self.browse_button.grid(row=0, column=2, sticky=tk.W, padx=5)
 
-        # Расширения
+        
         ttk.Label(input_frame, text="Расширения (jpg, png, ...):", style="TLabel").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.extensions_entry = ttk.Entry(input_frame, textvariable=self.allowed_extensions, width=40)
         self.extensions_entry.grid(row=1, column=1, sticky=(tk.W + tk.E), pady=5)
 
-        # Заголовок коллажа
+       
         ttk.Label(input_frame, text="Заголовок коллажа:", style="TLabel").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.title_entry = ttk.Entry(input_frame, textvariable=self.collage_title_text, width=40)
         self.title_entry.grid(row=2, column=1, sticky=(tk.W + tk.E), pady=5)
 
-        # Путь для сохранения
+       
         ttk.Label(input_frame, text="Путь сохранения коллажа:", style="TLabel").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.output_entry = ttk.Entry(input_frame, textvariable=self.output_file_name, width=40)
         self.output_entry.grid(row=3, column=1, sticky=(tk.W + tk.E), pady=5)
         self.save_browse_button = ttk.Button(input_frame, text="Обзор", command=self.browse_save_file)
         self.save_browse_button.grid(row=3, column=2, sticky=tk.W, padx=5)
 
-        # Кнопка выбора изображений
+        
         self.select_images_button = ttk.Button(self.master, text="Выбрать изображения", command=self.select_images_dialog)
         self.select_images_button.pack(pady=10)
 
-        # Кнопка создания коллажа
+        
         self.generate_button = ttk.Button(self.master, text="Создать коллаж", command=self.generate_collage_wrapper)
         self.generate_button.pack(pady=10)
 
@@ -100,17 +100,17 @@ class CollageApp:
             messagebox.showinfo("Информация", "В указанной папке нет изображений с выбранными расширениями.")
             return
 
-        # Создаем диалоговое окно для выбора изображений
+        
         select_dialog = tk.Toplevel(self.master)
         select_dialog.title("Выберите изображения")
 
-        # Список изображений
+        
         listbox = tk.Listbox(select_dialog, selectmode=tk.MULTIPLE, width=50, height=15)
         for i, image_name in enumerate(self.image_list):
             listbox.insert(tk.END, f"{i + 1}: {image_name}")
         listbox.pack(padx=10, pady=10)
 
-        # Кнопка "ОК"
+        
         ok_button = ttk.Button(select_dialog, text="OK", command=lambda: self.confirm_selection(listbox, select_dialog))
         ok_button.pack(pady=5)
 
